@@ -2,7 +2,7 @@ import numpy as np
 import copy
 from typing import List, Tuple
 
-from code_for_lower_bounds.rzk_tables import RZK_TABLE
+import code_for_lower_bounds.src.rzk_tables
 
 EPSILON = 1E-30
 
@@ -78,7 +78,7 @@ class RunDistribution:
         """
         # An r_max \times r_max array that holds in index j,r the probability to have j runs unite
         #   and have a total length of r.
-        r_max = RZK_TABLE.shape[0]
+        r_max = code_for_lower_bounds.src.rzk_tables.RZK_TABLE.shape[0]
         pr_j_r = np.zeros((r_max, r_max))
         pr_j_r[0, 0] = 1 - self.D
         p0 = 1.
@@ -98,7 +98,7 @@ class RunDistribution:
         """
         Computes a lower bound on the rate of the MD07 code based on this input distribution.
         """
-        r_max, z_max, k_max = RZK_TABLE.shape
+        r_max, z_max, k_max = code_for_lower_bounds.src.rzk_tables.RZK_TABLE.shape
         k_probs = np.zeros(k_max)  # Will be used to store the distribution of the lengths of runs.
         combined_arl = ((
                 (1 + self.D) / (1 - self.D))) * self.average_length  # The average total length of runs in a type
@@ -119,13 +119,13 @@ class RunDistribution:
             -self.lam * zs)  # The probability that the run of length z was not deleted. Is used for conditioning in the probability of k.
 
         ks = np.reshape(np.arange(1, k_max), (1, 1, -1))  # The values of k
-        lpk = (np.log(self.lam) * ks) + RZK_TABLE[:, 1:effective_z_max, 1:] - (self.lam * (
-                rs + zs))  # logarithm of the probability of having a run of length k in the received codeword originate from a given family, neglecting (the important) conditioning on the z not being deleted.
+        lpk = (np.log(self.lam) * ks) + code_for_lower_bounds.src.rzk_tables.RZK_TABLE[:, 1:effective_z_max, 1:] - \
+              (self.lam * (rs + zs))  # logarithm of the probability of having a run of length k in the received codeword originate from a given family, neglecting (the important) conditioning on the z not being deleted.
 
         rzk_probs = np.exp(lpk) * prs * pzs / z_was_not_deleted  # The joint probability distribution of r, z and k
         k_probs[1:] = np.sum(rzk_probs, axis=(0, 1))  # The probabilities of run lengths on the output channel
 
-        last_terms = np.sum(rzk_probs * RZK_TABLE[:, 1:effective_z_max, 1:])
+        last_terms = np.sum(rzk_probs * code_for_lower_bounds.src.rzk_tables.RZK_TABLE[:, 1:effective_z_max, 1:])
         k_probs[k_probs < EPSILON] = EPSILON
         self.k_dist = k_probs
         zero_term = -np.dot(k_probs[1:], np.log(k_probs[1:] / np.sum(k_probs)))
@@ -136,5 +136,4 @@ class RunDistribution:
             print(f'{last_terms=}')
             print(f'{combined_arl=}')
         return ((zero_term + first_term + second_term + last_terms) / combined_arl) / np.log(2)
-
 

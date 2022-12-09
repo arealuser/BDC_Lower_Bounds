@@ -2,8 +2,6 @@ from typing import Union
 
 import numpy as np
 
-from code_for_lower_bounds.rzk_tables import LOG_FACTORIALS
-
 
 def safe_log_arr(arr: np.ndarray):
     """
@@ -83,3 +81,6 @@ def log_over_arr(n, k):
     res = LOG_FACTORIALS[n] - (LOG_FACTORIALS[k] + LOG_FACTORIALS[np.clip(n - k, 0, None)])
     res[n < k] = -np.inf
     return res
+
+
+LOG_FACTORIALS: np.ndarray = np.zeros(1)

@@ -102,7 +102,7 @@ def generate_optimized_distribution(l: float, L_target: float, beta: float, verb
     if verbose:
         steps = tqdm.trange(step_limit)
     for _ in steps:
-        next_Q = do_baa_step(P_ji, Q, L_target, beta, L_i, D_i)
+        next_Q = np.clip(do_baa_step(P_ji, Q, L_target, beta, L_i, D_i), 1E-100, None)
         d = np.max(np.log(Q / next_Q))
         if d < delta:
             break
