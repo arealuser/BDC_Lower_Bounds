@@ -2,7 +2,6 @@ from typing import Tuple
 import pickle
 
 from code_for_lower_bounds.src import compute_lower_bounds, lower_bound_baa_optimization, rzk_tables
-import time
 import numpy as np
 
 K_MAX = 128

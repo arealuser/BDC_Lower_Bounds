@@ -73,28 +73,33 @@ def do_baa_step(P_ji, Q, L_target, beta, L_i, D_i):
     return new_Q
 
 
-def generate_BAA_params(l: float, BAA_N: int, verbose: bool = True):
+def generate_BAA_params(l: float, BAA_N: int, verbose: bool = True, channel_type: str = 'PRC'):
     if verbose:
         print(f'Computing BAA transition probs {BAA_N - 1}x{BAA_N} (~2 ** %.1f)' % (np.log2(BAA_N * (BAA_N - 1))))
     t0 = time.time()
     I = np.arange(1, BAA_N)
     J = np.arange(0, BAA_N)
     IJ, JI = np.meshgrid(I, J)
-    P_ji = np.clip(stats.poisson(IJ * l).pmf(JI), BAA_EPSILON, 1)
+    if channel_type == 'PRC':
+        P_ji = np.clip(stats.poisson(IJ * l).pmf(JI), BAA_EPSILON, 1)
+    elif channel_type == 'BDC':
+        P_ji = np.clip(stats.binom(IJ, l).pmf(JI), BAA_EPSILON, 1)
+    else:
+        raise RuntimeError(f"Unknown channel_type {channel_type}")
     if verbose:
         print('That took %.1f seconds' % (time.time() - t0))
-
     D_i = P_ji[0, :]
     L_i = I
     return P_ji, D_i, L_i
 
 
 def generate_optimized_distribution(l: float, L_target: float, beta: float, verbose: bool = True,
-                                    step_limit: int = 100, delta: float = 0.005, BAA_N: int = 512):
+                                    step_limit: int = 100, delta: float = 0.005, BAA_N: int = 512,
+                                    channel_type: str = 'PRC'):
     """
     Uses the weighted version of the Blahut-Arimoto algorithm to generate a potential distribution for an MD07-type code.
     """
-    P_ji, D_i, L_i = generate_BAA_params(l, BAA_N, verbose)
+    P_ji, D_i, L_i = generate_BAA_params(l, BAA_N, verbose, channel_type)
     Q = np.ones(BAA_N - 1)
     next_Q = Q
     d = 0.0
