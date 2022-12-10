@@ -18,9 +18,9 @@ def params_to_distribution(params: Tuple[float, float, float], step_limit: int):
     lam = params[0]
     l_val = params[1] / lam
     beta = params[2] * lam * l_val
-    dist = lower_bound_baa_optimization.generate_optimized_distribution(l=lam,
-                                                                        L_target=l_val,
-                                                                        beta=beta,
+    dist = lower_bound_baa_optimization.generate_optimized_distribution(channel_parameter=lam,
+                                                                        average_cost_target=l_val,
+                                                                        deletion_penalty=beta,
                                                                         step_limit=step_limit,
                                                                         delta=1E-4,
                                                                         verbose=True,
