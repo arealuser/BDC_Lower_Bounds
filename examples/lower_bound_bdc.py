@@ -48,4 +48,4 @@ if __name__ == '__main__':
     # print('Computing a lower bound based on the optimized distribution...')
     # rd = compute_lower_bounds.RunDistribution(dist2, 0.19)
     # lb = rd.compute_lower_bound(verbose=True)
-    # print(f'Generated a lower bound of {lb/rd.lam} for the capacity of the BDC')
+    # print(f'Generated a lower bound of {lb/rd.channel_parameter} for the capacity of the BDC')

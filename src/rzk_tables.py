@@ -51,7 +51,7 @@ def get_rzk_cache(r, z, k):
 
 def get_log_transition_prob_rzkl(r, z, k, lam):
     """
-    Return log(lam^k e^(-lam) ((r+z)^k - r^k) / k!)
+    Return log(channel_parameter^k e^(-channel_parameter) ((r+z)^k - r^k) / k!)
     """
     return (k * np.log(lam)) + get_rzk_cache(r, z, k) - lam * (r + z)
 
