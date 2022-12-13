@@ -1,9 +1,11 @@
+from typing import Optional
+
 import numpy as np
 from scipy import stats
 import tqdm
 import time
 
-BAA_EPSILON = 1E-30
+BAA_EPSILON = 1E-100
 
 
 def apply_penalty(alphas, letter_costs, l2):
@@ -103,13 +105,17 @@ def generate_BAA_params(channel_parameter: float, alphabet_size: int, verbose: b
 
 def generate_optimized_distribution(channel_parameter: float, average_cost_target: float, deletion_penalty: float,
                                     verbose: bool = True, step_limit: int = 100, delta: float = 0.005,
-                                    alphabet_size: int = 512, channel_type: str = 'PRC'):
+                                    alphabet_size: int = 512, channel_type: str = 'PRC',
+                                    initial_distribution: Optional[np.ndarray] = None):
     """
     Uses a weighted version of the Blahut-Arimoto algorithm to generate a candidate distribution for an MD07-type code.
     """
     transition_matrix, deletion_probabilities, letter_costs = generate_BAA_params(channel_parameter, alphabet_size,
                                                                                   verbose, channel_type)
-    input_distribution = np.ones(alphabet_size - 1)
+    if initial_distribution is None:
+        input_distribution = np.ones(alphabet_size - 1)
+    else:
+        input_distribution = np.copy(initial_distribution)
     next_input_distribution = input_distribution
     d = 0.0
     steps = range(step_limit)
@@ -118,7 +124,7 @@ def generate_optimized_distribution(channel_parameter: float, average_cost_targe
     for _ in steps:
         next_input_distribution = np.clip(do_baa_step(transition_matrix, input_distribution, average_cost_target,
                                                       deletion_penalty, letter_costs, deletion_probabilities),
-                                          1E-100, None)
+                                          BAA_EPSILON, None)
         d = np.max(np.log(input_distribution / next_input_distribution))
         if d < delta:
             break

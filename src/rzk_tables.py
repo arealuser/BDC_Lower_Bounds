@@ -84,7 +84,13 @@ def compute_RZK_table_BDC(r_max, z_max, k_max):
     """
     t0 = time.time()
     global RZK_TABLE
-    code_for_lower_bounds.src.log_arithmetics.LOG_FACTORIALS = np.array([0.0] + [log_factorial(k) for k in range(1, k_max + r_max + z_max + 1)])
+    code_for_lower_bounds.src.log_arithmetics.LOG_FACTORIALS = [0.0]
+    for i in tqdm.trange(1, k_max+r_max+z_max):
+        code_for_lower_bounds.src.log_arithmetics.LOG_FACTORIALS += \
+                [code_for_lower_bounds.src.log_arithmetics.LOG_FACTORIALS[-1]+np.log(i)]
+    code_for_lower_bounds.src.log_arithmetics.LOG_FACTORIALS = np.array(
+        code_for_lower_bounds.src.log_arithmetics.LOG_FACTORIALS
+    )
 
     print(f'Generating cache table of size {r_max}x{z_max}x{k_max} (~%.1f bits)...' % (np.log2(r_max * z_max * k_max)))
 

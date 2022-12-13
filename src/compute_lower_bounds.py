@@ -6,7 +6,7 @@ from scipy import stats
 
 import code_for_lower_bounds.src.rzk_tables
 
-EPSILON = 1E-30
+EPSILON = 1E-300
 
 BASE_SEQUENCES = [
     [1], [2], [3],
@@ -127,21 +127,20 @@ class RunDistribution:
         self.r_dist = np.sum(pr_j_r, axis=0)
         if self.channel_type == 'PRC':
             # The distribution of runs, conditioned on them not being completely deleted by the channel.
-            self.z_dist = self.distribution * (1 - np.exp(-self.channel_parameter * np.arange(len(self.distribution))))\
+            self.z_dist = self.distribution * (1 - np.exp(-self.channel_parameter * np.arange(len(self.distribution)))) \
                           / (1 - self.deletion_probability)
             # The distribution of the length of a single run, conditioned on it being deleted.
             self.s_i_dist = self.distribution * np.exp(-self.channel_parameter * np.arange(len(self.distribution))) \
                             / self.deletion_probability
         elif self.channel_type == 'BDC':
             # The distribution of runs, conditioned on them not being completely deleted by the channel.
-            self.z_dist = self.distribution * (1 - self.channel_parameter ** np.arange((len(self.distribution))))\
+            self.z_dist = self.distribution * (1 - self.channel_parameter ** np.arange((len(self.distribution)))) \
                           / (1 - self.deletion_probability)
             # The distribution of the length of a single run, conditioned on it being deleted.
             self.s_i_dist = self.distribution * (self.channel_parameter ** np.arange(len(self.distribution))) \
                             / self.deletion_probability
         else:
             raise RuntimeError(f"Unsupported channel type {self.channel_type}.")
-
 
     def _compute_lower_bound_PRC(self, verbose: bool = False) -> float:
         r_max, z_max, k_max = code_for_lower_bounds.src.rzk_tables.RZK_TABLE.shape
@@ -189,9 +188,8 @@ class RunDistribution:
     def _compute_lower_bound_BDC(self, verbose: bool = False) -> float:
         r_max, z_max, k_max = code_for_lower_bounds.src.rzk_tables.RZK_TABLE.shape
         k_probs = np.zeros(k_max)  # Will be used to store the distribution of the lengths of runs.
-        average_total_run_length = ((
-                (1 + self.deletion_probability) / (
-                1 - self.deletion_probability))) * self.average_length  # The average total length of runs in a type
+        average_total_run_length = ((1 + self.deletion_probability) / (1 - self.deletion_probability)) \
+                                   * self.average_length  # The average total length of runs in a type
 
         # The first term corresponds to H(d) * sum_k P_k / (1-d) (the sum of (52) and (53) in the Appendix of MD06).
         first_term = stats.bernoulli(self.channel_parameter).entropy() * average_total_run_length
@@ -218,15 +216,20 @@ class RunDistribution:
         # logarithm of the probability of having a run of length k in the received codeword originating
         # from a given family, not taking into account the conditioning on the z not being deleted.
         log_prob_k = (np.log(((1 - self.channel_parameter) / self.channel_parameter)) * ks) + \
-              code_for_lower_bounds.src.rzk_tables.RZK_TABLE[:, 1:effective_z_max, 1:] - \
-              (np.log(self.channel_parameter) * (rs + zs))
+                     code_for_lower_bounds.src.rzk_tables.RZK_TABLE[:, 1:effective_z_max, 1:] + \
+                     (np.log(self.channel_parameter) * (rs + zs))
+        self.log_prob_k = log_prob_k
 
-        rzk_probs = np.exp(log_prob_k) * prs * pzs / z_was_not_deleted  # The joint probability distribution of r, z and k
+        # The joint probability distribution of r, z and k
+        rzk_probs = np.exp(log_prob_k) * prs * pzs / z_was_not_deleted
+        self.rzk_probs = rzk_probs
         k_probs[1:] = np.sum(rzk_probs, axis=(0, 1))  # The probabilities of run lengths on the output channel
 
         # The third term corresponds to the average of log(over(r+z, k) - over(r, k)).
-        third_term = np.sum(rzk_probs * code_for_lower_bounds.src.rzk_tables.RZK_TABLE[:, 1:effective_z_max, 1:])
-        k_probs[k_probs < EPSILON] = EPSILON
+        third_term = -np.sum(rzk_probs *
+                            np.clip(code_for_lower_bounds.src.rzk_tables.RZK_TABLE[:, 1:effective_z_max, 1:],
+                                    np.log(EPSILON), None))
+        k_probs = np.clip(k_probs, EPSILON, None)
         self.k_dist = k_probs
         # The 0th term is the entropy of the K distributions themselves.
         zero_term = -np.dot(k_probs[1:], np.log(k_probs[1:] / np.sum(k_probs)))
@@ -237,7 +240,7 @@ class RunDistribution:
             print(f'{second_term=}')
             print(f'{third_term=}')
             print(f'{average_total_run_length=}')
-        return ((zero_term + first_term + second_term + third_term) / average_total_run_length) / np.log(2)
+        return ((zero_term - first_term - third_term) / average_total_run_length) / np.log(2)
 
     def compute_lower_bound(self, verbose: bool = False) -> float:
         """
