@@ -1,4 +1,5 @@
 import time
+from datetime import timedelta
 from typing import Tuple
 import pickle
 
@@ -63,30 +64,37 @@ if __name__ == '__main__':
                                 [0.95, 0.993, 0.005741]])
     my_rates = np.zeros(len(md07df))
     new_rates = np.zeros(len(md07df))
+    count = 0
+    t0 = time.time()
     # for i in range(len(md07df) - 1, -1, -1):
     for i in range(16, 17):
         p = md07df["p"][i]
         d = md07df["d"][i]
         dist = geometric_dist(p)
-        count = 0
 
-        def get_dist(l_val: float, beta: float) -> np.ndarray:
+
+
+        def get_dist(l_val: float, beta: float, verbose: bool = False) -> np.ndarray:
             dist2 = np.zeros(dist.shape)
             dist2[1:] = lower_bound_baa_optimization.generate_optimized_distribution(channel_parameter=d,
                                                                                      average_cost_target=l_val,
                                                                                      deletion_penalty=beta,
-                                                                                     step_limit=50,
+                                                                                     step_limit=100,
                                                                                      delta=1E-4,
-                                                                                     verbose=False,
+                                                                                     verbose=verbose,
                                                                                      channel_type='BDC',
                                                                                      initial_distribution=dist[1:],
                                                                                      alphabet_size=len(dist))
+            dist2 = dist2 / np.sum(dist2)
             return dist2
+
 
         def get_score(params: Tuple[float, float]) -> float:
             l_val, beta = params
+            global count
             count += 1
-            print(f'get_score with {i=}, {l_val=}, {beta=}, {count=}')
+            td = timedelta(seconds=time.time() - t0)
+            print(f'get_score with {i=}, {l_val=}, {beta=}, {count=}, {str(td)}')
             if min(l_val, beta) < 0:
                 return 100
 
@@ -95,15 +103,18 @@ if __name__ == '__main__':
             lb2 = rd2.compute_lower_bound(False)
             print(f'{lb2=}')
             return -lb2
-        #
-        # opt_obj = basinhopping(get_score, (np.dot(dist, np.arange(len(dist))), 15), niter=5)
-        # print(opt_obj)
-        # best_lb = -opt_obj.fun
-        # best_dist = get_dist(opt_obj.x[0], opt_obj.x[1])
-        # with open(f'results/dist_{i}.pkl', 'wb') as f:
-        #     pickle.dump((opt_obj, best_dist), f)
 
-        best_dist = get_dist(43.67778036, 1383.37898488)
+
+        #
+        opt_obj = basinhopping(get_score, (np.dot(dist, np.arange(len(dist))), 15), niter=5)
+        print(opt_obj)
+        best_lb = -opt_obj.fun
+        best_dist = get_dist(opt_obj.x[0], opt_obj.x[1])
+        with open(f'results/dist_{i}.pkl', 'wb') as f:
+            pickle.dump((opt_obj, best_dist), f)
+
+        # best_dist = get_dist(43.67778036, 1383.37898488, True)
+        # print(compute_lower_bounds.RunDistribution(best_dist, d, 'BDC').compute_lower_bound(True))
         fig = plt.figure(figsize=(8, 8), dpi=400)
         plt.plot(best_dist, label='Optimized Distribution')
         plt.plot(dist, label='MD07 Distribution')
@@ -113,29 +124,9 @@ if __name__ == '__main__':
         plt.title('Optimized Distribution', fontsize='xx-large')
         plt.tight_layout()
         plt.savefig(f'results/distribution_{i}.pdf')
-        plt.show()
+        # plt.show()
 
-        # new_rates[i] = best_lb
-        print('temp')
-        # l_val = float(np.dot(dist, np.arange(len(dist))))
-        # factors = [1, 2, 3.5, 4, 4.5, 5, 5.5, 6, 8, 12, 16]
-        # for f in factors:
-        #     t0 = time.time()
-        #     dist2 = np.zeros(dist.shape)
-        #     dist2[1:] = lower_bound_baa_optimization.generate_optimized_distribution(channel_parameter=d,
-        #                                                                              average_cost_target=l_val,
-        #                                                                              deletion_penalty=f * d * (1 - d) * l_val, # NOQA
-        #                                                                              step_limit=1000,
-        #                                                                              delta=1E-4,
-        #                                                                              verbose=False,
-        #                                                                              channel_type='BDC',
-        #                                                                              initial_distribution=dist[1:],
-        #                                                                              alphabet_size=len(dist))
-        #     dist2 = dist2 / np.sum(dist2)
-        #     rd2 = compute_lower_bounds.RunDistribution(dist2, d, 'BDC')
-        #     lb2 = rd2.compute_lower_bound(False)
-        #     print(f, lb2, time.time() - t0)
-        #     new_rates[i] = max(lb2, new_rates[i])
+        new_rates[i] = best_lb
         rd = compute_lower_bounds.RunDistribution(dist, d, 'BDC')
         lb = rd.compute_lower_bound(False)
 
@@ -147,21 +138,3 @@ if __name__ == '__main__':
     md07df["new rate"] = new_rates
 
     print(md07df)
-
-    # print('Generating optimized distribution...')
-    #
-    # dist2 = np.concatenate(([0], params_to_distribution((0.19, 7.72, 0.438), 10000)))
-    # dist2 = (1 / np.sum(dist2)) * dist2
-    # f = plt.figure(figsize=(5, 5), dpi=400)
-    # plt.plot(dist2)
-    # plt.xlabel('Run Length', fontsize='large')
-    # plt.ylabel('Frequency', fontsize='large')
-    # plt.tight_layout()
-    # plt.savefig('./distribution.pdf')
-    # with open('temp2.pkl', 'wb') as f:
-    #     pickle.dump(dist2, f)
-    #
-    # print('Computing a lower bound based on the optimized distribution...')
-    # rd = compute_lower_bounds.RunDistribution(dist2, 0.19)
-    # lb = rd.compute_lower_bound(verbose=True)
-    # print(f'Generated a lower bound of {lb/rd.channel_parameter} for the capacity of the BDC')
