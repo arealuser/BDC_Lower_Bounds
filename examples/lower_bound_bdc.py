@@ -66,13 +66,10 @@ if __name__ == '__main__':
     new_rates = np.zeros(len(md07df))
     count = 0
     t0 = time.time()
-    # for i in range(len(md07df) - 1, -1, -1):
-    for i in range(16, 17):
+    for i in range(len(md07df) - 1, -1, -1):
         p = md07df["p"][i]
         d = md07df["d"][i]
         dist = geometric_dist(p)
-
-
 
         def get_dist(l_val: float, beta: float, verbose: bool = False) -> np.ndarray:
             dist2 = np.zeros(dist.shape)
@@ -87,7 +84,6 @@ if __name__ == '__main__':
                                                                                      alphabet_size=len(dist))
             dist2 = dist2 / np.sum(dist2)
             return dist2
-
 
         def get_score(params: Tuple[float, float]) -> float:
             l_val, beta = params
@@ -111,7 +107,7 @@ if __name__ == '__main__':
         best_lb = -opt_obj.fun
         best_dist = get_dist(opt_obj.x[0], opt_obj.x[1])
         with open(f'results/dist_{i}.pkl', 'wb') as f:
-            pickle.dump((opt_obj, best_dist), f)
+            pickle.dump((opt_obj, best_dist, p, d), f)
 
         # best_dist = get_dist(43.67778036, 1383.37898488, True)
         # print(compute_lower_bounds.RunDistribution(best_dist, d, 'BDC').compute_lower_bound(True))
